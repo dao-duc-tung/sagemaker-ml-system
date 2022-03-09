@@ -1,0 +1,59 @@
+#!/usr/bin/env python
+
+import json
+import sys
+from pathlib import Path
+
+from utils import *
+
+
+class TrainConfig:
+    ROOT_DIR = Path("/opt/ml")
+    INPUT_DATA_DIR = ROOT_DIR / "input/data"
+
+    IN_PARAM_JSON = ROOT_DIR / "input/config/hyperparameters.json"
+    IN_TRAINING_DIR = INPUT_DATA_DIR / "train"
+
+    OUT_MODEL_DIR = ROOT_DIR / "model"
+    OUT_MODEL_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def inspect_input():
+    logger.info(f"Start inspect_input")
+    files = list_dir(TrainConfig.INPUT_DATA_DIR)
+    logger.info(f"{TrainConfig.INPUT_DATA_DIR.as_posix()}: {files}")
+
+    files = list_dir(TrainConfig.IN_TRAINING_DIR)
+    logger.info(f"{TrainConfig.IN_TRAINING_DIR.as_posix()}: {files}")
+
+
+def train(learning_rate=0.03):
+    logger.info(f"Start train")
+    params = {
+        "learning_rate": learning_rate,
+    }
+    logger.info(f"Training with params={params}")
+
+
+def inspect_output():
+    logger.info(f"Start inspect_output")
+    files = list_dir(TrainConfig.OUT_MODEL_DIR)
+    logger.info(f"{TrainConfig.OUT_MODEL_DIR.as_posix()}: {files}")
+
+
+if __name__ == "__main__":
+    params = {}
+    if TrainConfig.IN_PARAM_JSON.exists():
+        with open(TrainConfig.IN_PARAM_JSON.as_posix(), "r") as tc:
+            params = json.load(tc)
+    logger.info(f"params: {params}")
+
+    args = {}
+    learning_rate = params.get("learning_rate", None)
+    if learning_rate is not None:
+        args["learning_rate"] = float(learning_rate)
+
+    inspect_input()
+    train(**args)
+    inspect_output()
+    sys.exit(0)

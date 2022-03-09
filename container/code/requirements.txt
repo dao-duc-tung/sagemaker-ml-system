@@ -1,0 +1,4 @@
+pandas==1.1.5
+python-multipart==0.0.5
+gunicorn
+flask
