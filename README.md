@@ -1,5 +1,30 @@
 # SageMaker MLOps
 
+<!-- PROJECT LOGO -->
+<br />
+<p align="center">
+  <a href="https://github.com/dao-duc-tung/sagemaker-mlops">
+    <img src="media/banner.png" alt="Logo" width="300" height="100">
+  </a>
+
+  <h3 align="center">SageMaker MLOps</h3>
+</p>
+
+<!-- TABLE OF CONTENTS -->
+<details open="open">
+  <summary>Table of Contents</summary>
+  <ol>
+    <li><a href="#introduction">Introduction</a></li>
+    <li><a href="#architecture">Architecture</a></li>
+    <li><a href="#customize-docker-images">Customize Docker images</a></li>
+    <li><a href="#setup-sage-maker-studio-project">Setup SageMaker Studio project</a></li>
+    <li><a href="#cleanup">Cleanup</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="#license">License</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ol>
+</details>
+
 ## Introduction
 
 The system customizes the [AWS safe deployment pipeline for SM](https://github.com/aws-samples/amazon-sagemaker-safe-deployment-pipeline). This solution provides a _Blue/Green_, also known as a _Canary_ deployment, by creating a Lambda endpoint that calls into a SageMaker endpoint for real-time inference.
