@@ -15,22 +15,22 @@ The system customizes the [AWS safe deployment pipeline for SM](https://github.c
 1. **SM endpoint**: Model endpoint created by SageMaker, only can be used from an LD function
 1. **LD endpoint**: A LD function that is responsible for serving prediction service by calling SM endpoint
 1. **API endpoint**: API Gateway endpoint that links with the LD endpoint. This endpoint is public and is called by the end application (ie. mobile app, web app, etc.)
-1. **Dev deployment**: Deployment in development stage
-1. **Prod deployment**: Deployment in production stage
-1. **System pipeline**: The CodePipeline that has sveral steps including fetch source code, build CF stacks, run SF, dev deployment, and prod deployment
+1. **Dev deployment**: Deployment in the development stage
+1. **Prod deployment**: Deployment in the production stage
+1. **System pipeline**: A CodePipeline that has several steps including fetching source code, building CF stacks, running SF, dev deployment, and prod deployment
 
 ### System functionalities
 
 The system supports the following functionalities:
 
 - **Training**
-  - Training data is saved in any S3 bucket
-  - Customizable docker image for pre-processing data, training model and model evaluation
+  - Training data is saved in an S3 bucket
+  - Customizable docker image for pre-processing data, training model, and model evaluation
 - **Deployment**
   - Customizable docker image for serving model at SM endpoint
   - Support multi-core serving at SM endpoint instance using Nginx and Gunicorn
   - 2-stage deployment: dev and prod
-  - Manual approve to deploy model from dev to prod stage
+  - Manual approval to deploy model from dev to prod stage
   - Customizable docker image for serving prediction service at LD endpoint
   - LD endpoint links with EFS shared volumes to store user data
 - **Monitoring**
@@ -43,7 +43,7 @@ The system supports the following functionalities:
   - Upload data to S3 bucket -> auto rerun system pipeline
   - Source code updated -> auto rerun system pipeline
   - Feature drift detected -> auto rerun system pipeline
-  - Auto scaling SM endpoint
+  - Auto-scaling SM endpoint
   - Auto shifting traffic from the old LD endpoint to the new LD endpoint
   - Canary deployment strategy with rollback on error
 
@@ -68,56 +68,56 @@ The architecture diagram below shows the entire MLOps pipeline at a high level. 
 ```bash
 .
 ├── api
-│   ├── __init__.py
-│   ├── app.py
-│   ├── post_traffic_hook.py
-│   └── pre_traffic_hook.py
+│   ├── __init__.py
+│   ├── app.py
+│   ├── post_traffic_hook.py
+│   └── pre_traffic_hook.py
 ├── assets
-│   ├── deploy-model-dev.yml
-│   ├── deploy-model-prd.yml
-│   ├── suggest-baseline.yml
-│   └── training-job.yml
+│   ├── deploy-model-dev.yml
+│   ├── deploy-model-prd.yml
+│   ├── suggest-baseline.yml
+│   └── training-job.yml
 ├── container
-│   ├── Dockerfile
-│   ├── Dockerfile.lambda.ecr
-│   ├── build_image.sh
-│   ├── push_image.sh
-│   └── code
-│       ├── evaluate.py
-│       ├── lambda_handler.py
-│       ├── nginx.conf
-│       ├── predictor.py
-│       ├── prepare_data.py
-│       ├── requirements.txt
-│       ├── serve
-│       ├── train
-│       ├── utils.py
-│       └── wsgi.py
+│   ├── Dockerfile
+│   ├── Dockerfile.lambda.ecr
+│   ├── build_image.sh
+│   ├── push_image.sh
+│   └── code
+│       ├── evaluate.py
+│       ├── lambda_handler.py
+│       ├── nginx.conf
+│       ├── predictor.py
+│       ├── prepare_data.py
+│       ├── requirements.txt
+│       ├── serve
+│       ├── train
+│       ├── utils.py
+│       └── wsgi.py
 ├── custom_resource
-│   ├── __init__.py
-│   ├── sagemaker-custom-resource.yml
-│   ├── sagemaker_add_transform_header.py
-│   ├── sagemaker_create_experiment.py
-│   ├── sagemaker_query_drift.py
-│   ├── sagemaker_query_evaluation.py
-│   ├── sagemaker_query_training.py
-│   ├── sagemaker_suggest_baseline.py
-│   └── sagemaker_training_job.py
+│   ├── __init__.py
+│   ├── sagemaker-custom-resource.yml
+│   ├── sagemaker_add_transform_header.py
+│   ├── sagemaker_create_experiment.py
+│   ├── sagemaker_query_drift.py
+│   ├── sagemaker_query_evaluation.py
+│   ├── sagemaker_query_training.py
+│   ├── sagemaker_suggest_baseline.py
+│   └── sagemaker_training_job.py
 ├── exp_nbs
-│   ├── exp-local-sm.ipynb
-│   ├── exp-ml-gateway.ipynb
-│   ├── exp-real-sm.ipynb
-│   └── exp-step-functions.ipynb
+│   ├── exp-local-sm.ipynb
+│   ├── exp-ml-gateway.ipynb
+│   ├── exp-real-sm.ipynb
+│   └── exp-step-functions.ipynb
 ├── model
-│   ├── buildspec.yml
-│   ├── requirements.txt
-│   └── run_pipeline.py
+│   ├── buildspec.yml
+│   ├── requirements.txt
+│   └── run_pipeline.py
 ├── scripts
-│   ├── build.sh
-│   ├── lint.sh
-│   ├── rm_prj.sh
-│   ├── rm_s3.sh
-│   └── validate-tpl.sh
+│   ├── build.sh
+│   ├── lint.sh
+│   ├── rm_prj.sh
+│   ├── rm_s3.sh
+│   └── validate-tpl.sh
 ├── pipeline.yml
 ├── studio.yml
 └── studio_nbs
@@ -131,7 +131,7 @@ This step creates several python scripts for steps including preparing data, tra
 
 The input of this step is the training code, evaluation code, and the model serving code of an ML model. The output of this step is the two docker images that contain all of these scripts.
 
-The 1st docker image serves as a multi-functional docker image for preparing data, training model, evaluating model, and serving model. Combining all of these scripts simplifies the development process without creating several docker images for each individual script which is overkilled for this sample solution. Check [this tutorial](https://sagemaker-workshop.com/custom/containers.html) for more details.
+The 1st docker image serves as a multi-functional docker image for preparing data, training model, evaluating model, and serving model. Combining all of these scripts simplifies the development process without creating several docker images for each script which is overkilled for this sample solution. Check [this tutorial](https://sagemaker-workshop.com/custom/containers.html) for more details.
 
 The 2nd docker image serves as the runtime environment for the LD endpoint. This docker image uses the 1st docker image as the base image. The reason why we cannot use the 1st docker image directly for the LD endpoint is that the container-based LD function requires an additional library called `awslambdaric`. This LD function also requires a specific entry point and a specific command to run. Check [this article](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html#images-create-from-alt) for more details.
 Let's start by creating an SM notebook instance and clone this repository to the notebook environment.
@@ -169,7 +169,7 @@ The input of this step is the output of the previous step which is the docker im
 1. Prepare your LINUX environment
    - Install `rsync`, `zip`.
    - Install `aws-cli` in your python environment.
-   - Clone this repo to your own LINUX system.
+   - Clone this repo to your LINUX system.
 1. Update the `studio.yml` and `pipeline.yml` if needed
    - `studio.yml` creates the SM Studio organization template and the required resources.
    - `pipeline.yml` creates the required resources for the SM Studio project when you create a new SM Studio project.
@@ -230,7 +230,7 @@ The system pipeline consists of several stages.
       - `assets/deploy-model-dev.yml`: This CF stack creates the SM endpoint in dev deployment.
       - `assets/deploy-model-prd.yml`: This CF stack creates some resources in prod deployment such as SM endpoint, LD endpoint, API endpoint, Auto Scaling policy, Model Monitoring Schedule, and CW alarms.
 
-   1. Step 2: this step updates the `sagemaker-custom-resource.yml` stack and the `workflow-graph.yml` stack.
+   1. Step 2: This step updates the `sagemaker-custom-resource.yml` stack and the `workflow-graph.yml` stack.
 
 1. **Train stage**. This stage will run the SF to:
 
@@ -239,7 +239,7 @@ The system pipeline consists of several stages.
    - Save the trained model
    - Query the evaluation results using the query-evaluation LD function created by `sagemaker-custom-resource.yml` CF stack
    - Verify if the evaluation results meet the requirements
-   - Query the training results using the query-training LD function created by `sagemaker-custom-resource.yml` CF stack to do some post-processes such as copying training job artifacts that need for inference to the EFS shared data volume. This LD function MUST implement the `Retry step function block` because mounting the EFS takes time and might cause timeout error.
+   - Query the training results using the query-training LD function created by `sagemaker-custom-resource.yml` CF stack to do some post-processes such as copying training job artifacts that need for inference to the EFS shared data volume. This LD function MUST implement the `Retry step function block` because mounting the EFS takes time and might cause a timeout error.
 
 1. **Dev deployment stage**. This stage creates the `deploy-model-dev.yml` CF stack. After the SM endpoint is deployed, this stage will wait for you to manually approve the changes to move to the next stage.
 
@@ -267,7 +267,7 @@ There are two ways to test the API endpoint by using features arrays or using a 
 
 ### Partially clean
 
-This just removes the two CF stacks and their created resources to avoid extra fees. These two CF stacks is created when the System pipeline runs.
+This just removes the two CF stacks and their created resources to avoid extra fees. These two CF stacks are created when the System pipeline runs.
 
 1. Delete two CF stacks named `*-deploy-prd` and `*-deploy-dev` to delete the endpoints and their related resources.
 
@@ -296,7 +296,7 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
 
 Tung Dao - [LinkedIn](https://www.linkedin.com/in/tungdao17/)
 
-Project Link: [https://github.com/dao-duc-tung/ecs-mlops](https://github.com/dao-duc-tung/ecs-mlops)
+Project Link: [https://github.com/dao-duc-tung/sagemaker-mlops](https://github.com/dao-duc-tung/sagemaker-mlops)
 
 <!-- MARKDOWN LINKS & IMAGES -->
 
