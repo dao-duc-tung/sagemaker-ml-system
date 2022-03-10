@@ -27,7 +27,7 @@
 
 ## Introduction
 
-The system customizes the [AWS safe deployment pipeline for SM](https://github.com/aws-samples/amazon-sagemaker-safe-deployment-pipeline). This solution provides a _Blue/Green_, also known as a _Canary_ deployment, by creating a Lambda endpoint that calls into a SageMaker endpoint for real-time inference.
+This solution customizes [AWS safe deployment pipeline for SM](https://github.com/aws-samples/amazon-sagemaker-safe-deployment-pipeline). It provides a _Blue/Green_, also known as a _Canary_ deployment, by creating a Lambda endpoint that calls into a SageMaker endpoint for real-time inference.
 
 ### Abbreviation and Terminology
 
