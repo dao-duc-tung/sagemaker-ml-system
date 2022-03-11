@@ -174,8 +174,13 @@ Resources:
           ENDPOINT_NAME: !GetAtt Endpoint.EndpointName
           ASSETS_DIR: "/mnt/assets"
 
+      # Enable gradual Lambda deployment
+      # This triggers AWS SAM to create an CodeDeploy::Application, an CodeDeploy::DeploymentGroup, and an IAM::Role
+      # Ref 1: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-resource-function.html
+      # Ref 2: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/automating-updates-to-serverless-apps.html
       DeploymentPreference:
-        Type: Canary10Percent5Minutes #AllAtOnce
+        Enabled: true
+        Type: Canary10Percent5Minutes
         Alarms:
           # A list of alarms that you want to monitor
           - !Ref AliasErrorMetricGreaterThanZeroAlarm
@@ -190,6 +195,9 @@ Resources:
               - DeploymentFailure
             TriggerName: DeploymentCompleteTrigger
             TriggerTargetArn: !Ref NotificationArn
+
+      # AWS SAM auto-creates an implicit API (API Gateway resource)
+      # Ref: https://github.com/aws/serverless-application-model/blob/master/docs/internals/generated_resources.rst#with-events
       Events:
         Invoke:
           Type: Api
@@ -418,12 +426,11 @@ Resources:
     DependsOn: AutoScaling
 
 Outputs:
-  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
-  # Find out more about other implicit resources you can reference within SAM
-  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   DeploymentApplication:
     Description: "Regression deployment application"
     Value: !Ref ServerlessDeploymentApplication
+
+  # ServerlessRestApi is an implicit API created by AWS SAM because Serverless::Function defines 'Events' property
   RestApi:
-    Description: "API Gateway endpoint URL for Prod stage for Regression function"
+    Description: "API Gateway endpoint URL for Prod stage"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/api/"
