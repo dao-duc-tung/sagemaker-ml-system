@@ -56,7 +56,7 @@ The system supports the following functionalities:
 - **Deployment**
   - Customizable docker image for serving model at SM endpoint
   - Support multi-core serving at SM endpoint instance using Nginx and Gunicorn
-  - 2-stage deployment: dev and prod
+  - 2-stage deployment: **dev-stage** and **prod-stage**
   - Manual approval to deploy model from dev to prod stage
   - Customizable docker image for serving prediction service at LD endpoint
   - LD endpoint links with EFS shared volumes to store user data
@@ -66,12 +66,8 @@ The system supports the following functionalities:
   - CloudWatch dashboard to monitor system metrics
   - Send alarm to admin email
 - **Automation**
-  - Auto rerun system pipeline monthly
-  - Upload data to S3 bucket -> auto rerun system pipeline
-  - Source code updated -> auto rerun system pipeline
-  - Feature drift detected -> auto rerun system pipeline
+  - Auto rerun system pipeline monthly, on data uploaded, on source code changed, and on feature drift detected
   - Auto-scaling SM endpoint
-  - Auto shifting traffic from the old LD endpoint to the new LD endpoint
   - Canary deployment strategy with rollback on error
 
 ## Architecture
