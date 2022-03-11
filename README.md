@@ -27,9 +27,9 @@
 
 ## Introduction
 
-This solution customizes [AWS safe deployment pipeline for SM](https://github.com/aws-samples/amazon-sagemaker-safe-deployment-pipeline). It provides a _Blue/Green_, also known as a _Canary_ deployment, by creating a Lambda endpoint that calls into a SageMaker endpoint for real-time inference.
+This solution customizes the project [Amazon SageMaker Safe Deployment Pipeline](https://github.com/aws-samples/amazon-sagemaker-safe-deployment-pipeline).
 
-The main use-case of this solution is building an end-to-end ML system that supports the entire ML lifecycle including data preparation, model training, model evaluation, model deployment, and system monitoring with automation in most of the steps. Check the section `System functionalities` below for more detail about the system's capabilities.
+The main use-case of this solution is building an end-to-end ML system that supports the entire ML lifecycle including data preparation, model training, model evaluation, model deployment, and system monitoring with a _Blue/Green_ deployment capability, also known as a _Canary_ deployment. Check the section `System functionalities` below for more detail.
 
 ### Abbreviation and Terminology
 
