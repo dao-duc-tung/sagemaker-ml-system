@@ -80,13 +80,18 @@ The architecture diagram below shows the entire MLOps pipeline at a high level. 
 
 ### Component Details
 
+- **CodePipeline**: defines several stages to go from source code to the creation of the API endpoint.
+- **CodeBuild**: builds artifacts like CF parameters and defines SF.
+- **S3**: stores created artifacts and model's data.
+- **CloudFormation**: creates resources in an infrastructure-as-code manner.
+- **Step Functions**: orchestrates SM training and processing jobs.
+- **SageMaker**: trains and deploys ML model.
+- **CodeDeploy**: automates shifting traffic between two LD functions.
+- **API Gateway**: creates an HTTPS REST API endpoint for the LD functions that invoke deployed SM endpoint.
 - **Key Management Service (KMS)**: encrypts data and artifacts.
 - **Secrets Manager**: stores your GitHub Access Token.
 - **Simple Notification Service (SNS)**: notifies you when CodeDeploy has successfully deployed the API, and to receive alerts for retraining and drift detection (signing up for these notifications is optional).
-- **Two Amazon CloudWatch event rules**: one which schedules the pipeline to run every month, and one which triggers the pipeline to run when SageMaker Model Monitor detects certain metrics.
-- **SageMaker Jupyter notebook**: to develop.
-- **S3**: stores model artifacts.
-- **CodePipeline**: defines several stages.
+- **CloudWatch event rules**: schedules the pipeline to run every month, and triggers the pipeline to run when SM Model Monitor detects the feature drift.
 
 ### Folder structure
 
