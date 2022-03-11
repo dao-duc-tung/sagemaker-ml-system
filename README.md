@@ -4,7 +4,7 @@
 <br />
 <p align="center">
   <a href="https://github.com/dao-duc-tung/sagemaker-mlops">
-    <img src="media/banner.png" alt="Logo" width="300" height="100">
+    <img src="docs/banner.png" alt="Logo" width="300" height="100">
   </a>
 
   <h3 align="center">SageMaker MLOps</h3>
@@ -28,6 +28,8 @@
 ## Introduction
 
 This solution customizes [AWS safe deployment pipeline for SM](https://github.com/aws-samples/amazon-sagemaker-safe-deployment-pipeline). It provides a _Blue/Green_, also known as a _Canary_ deployment, by creating a Lambda endpoint that calls into a SageMaker endpoint for real-time inference.
+
+The main use-case of this solution is building an end-to-end ML system that supports the entire ML lifecycle including data preparation, model training, model evaluation, model deployment, and system monitoring with automation in most of the steps. Check the section `System functionalities` below for more detail about the system's capabilities.
 
 ### Abbreviation and Terminology
 
@@ -104,9 +106,7 @@ The architecture diagram below shows the entire MLOps pipeline at a high level. 
 │   └── pre_traffic_hook.py
 ├── assets
 │   ├── deploy-model-dev.yml
-│   ├── deploy-model-prd.yml
-│   ├── suggest-baseline.yml
-│   └── training-job.yml
+│   └── deploy-model-prd.yml
 ├── container
 │   ├── Dockerfile
 │   ├── Dockerfile.lambda.ecr
@@ -131,7 +131,6 @@ The architecture diagram below shows the entire MLOps pipeline at a high level. 
 │   ├── sagemaker_query_drift.py
 │   ├── sagemaker_query_evaluation.py
 │   ├── sagemaker_query_training.py
-│   ├── sagemaker_suggest_baseline.py
 │   └── sagemaker_training_job.py
 ├── exp_nbs
 │   ├── exp-local-sm.ipynb
@@ -266,7 +265,9 @@ The system pipeline consists of several stages.
 
 1. **Source stage**. When a new commit is pushed to the main branch or `data-source.zip` is uploaded to the pre-defined S3 folder, the system pipeline will be triggered.
 
-1. **Build stage**. This stage consists of two steps (see `pipeline.yml`).
+![source-stage][source-stage]
+
+2. **Build stage**. This stage consists of two steps (see `pipeline.yml`).
 
    1. **Step 1**: Build templates. This step runs `model/run_pipeline.yml` to do several tasks (see `model/buildspec.yml`).
 
@@ -280,13 +281,15 @@ The system pipeline consists of several stages.
 
    1. **Step 2**: This step updates the `workflow-graph.yml` and `sagemaker-custom-resource.yml` packaged CF stacks. The `sagemaker-custom-resource.yml` CF stack creates the following main resources.
 
-      - An LD function to prepend header to a batch transform job. See `custom_resource\sagemaker_add_transform_header.py`.
-      - An LD function to create a SageMaker experiment and trial. See `custom_resource\sagemaker_create_experiment.py`.
-      - An LD function to query evaluation job to return results. See `custom_resource\sagemaker_query_evaluation.py`.
-      - An LD function to query training job to copy artifacts to EFS. See `custom_resource\sagemaker_query_training.py`.
-      - An LD function to query processing job to return drift. See `custom_resource\sagemaker_query_drift.py`.
+      - An LD function to prepend header to a batch transform job. See `custom_resource/sagemaker_add_transform_header.py`.
+      - An LD function to create a SageMaker experiment and trial. See `custom_resource/sagemaker_create_experiment.py`.
+      - An LD function to query evaluation job to return results. See `custom_resource/sagemaker_query_evaluation.py`.
+      - An LD function to query training job to copy artifacts to EFS. See `custom_resource/sagemaker_query_training.py`.
+      - An LD function to query processing job to return drift. See `custom_resource/sagemaker_query_drift.py`.
 
-1. **Train stage**. The **Build stage** just creates the SF. This **Train stage** will run that SF that has the following steps (see `model/run_pipeline.yml`).
+![build-stage][build-stage]
+
+3. **Train stage**. The **Build stage** just creates the SF. This **Train stage** will run that SF that has the following steps (see `model/run_pipeline.yml`).
 
    - Create a _baseline_ for the model monitor using an SM processing job
    - Train a model using an SM training job
@@ -295,7 +298,13 @@ The system pipeline consists of several stages.
    - Verify if the evaluation results meet the requirements
    - Query the training results using the query-training LD function created by `sagemaker-custom-resource.yml` CF stack to do some post-processes such as copying training job artifacts that need for inference to the EFS shared data volume. This LD function MUST implement the `Retry step function block` because mounting the EFS takes time and might cause a timeout error.
 
-1. **Dev deployment stage**. This stage consists of two steps.
+![train-stage][train-stage]
+
+Below is the steps of the defined SF.
+
+![detailed-sf][detailed-sf]
+
+4. **Dev deployment stage**. This stage consists of two steps.
 
    1. Step 1: Deploy Model Dev. This step updates the `deploy-model-dev.yml` CF stack. This CF stack creates the following resources.
 
@@ -305,20 +314,32 @@ The system pipeline consists of several stages.
 
    1. Step 2: After the SM endpoint is deployed, this step waits for you to manually approve the changes to move to the next stage.
 
-1. **Prod deployment stage**. This stage updates the `deploy-model-prd.yml` CF stack. This CF stack creates the following main resources.
+![dev-deployment-stage][dev-deployment-stage]
+
+5. **Prod deployment stage**. This stage updates the `deploy-model-prd.yml` CF stack. This CF stack creates the following main resources.
 
    - An SM model
    - An SM endpoint configuration
    - An SM endpoint
-   - An LD function (LD endpoint). See `container\code\lambda_handler.py`. This LD function supports gradual deployment. This gradual deployment creates some resources like a `CodeDeploy::Application`, a `CodeDeploy::DeploymentGroup`, and a implicit API Gateway endpoint. Read more [here](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/automating-updates-to-serverless-apps.html).
-   - An LD function to perform checks pre-shifting traffic to LD endpoint. See `api\pre_traffic_hook.py`. Read more about `hooks` section for an AWS Lambda deployment [here](https://docs.aws.amazon.com/codedeploy/latest/userguide/reference-appspec-file-structure-hooks.html#appspec-hooks-lambda)
-   - An LD function to perform checks post-shifting traffic to LD endpoint. See `api\post_traffic_hook.py`
+   - An LD function (LD endpoint). See `container/code/lambda_handler.py`. This LD function supports gradual deployment. This gradual deployment creates some resources like a `CodeDeploy::Application`, a `CodeDeploy::DeploymentGroup`, and a implicit API Gateway endpoint. Read more [here](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/automating-updates-to-serverless-apps.html).
+   - An LD function to perform checks pre-shifting traffic to LD endpoint. See `api/pre_traffic_hook.py`. Read more about `hooks` section for an AWS Lambda deployment [here](https://docs.aws.amazon.com/codedeploy/latest/userguide/reference-appspec-file-structure-hooks.html#appspec-hooks-lambda)
+   - An LD function to perform checks post-shifting traffic to LD endpoint. See `api/post_traffic_hook.py`
    - An SM monitoring schedule to run on requests' data
    - An CW alarm to track for the feature drift on requests' data
    - Two CW alarms to track for the LD endpoint deployment's status
    - An `ApplicationAutoScaling::ScalableTarget` for the SM endpoint
    - An `ApplicationAutoScaling::ScalingPolicy` for the SM endpoint
    - This CF stack outputs the API Gateway endpoint URL
+
+![prod-deployment-stage][prod-deployment-stage]
+
+CodeDeploy will perform a canary deployment and send 10% of the traffic to the new endpoint over a 5-minute period. Below is the animation of the traffic shifting progress.
+
+![traffic-shifting-progress][traffic-shifting-progress]
+
+The CodePipeline instance is configured with CloudWatch Events to start the pipeline for retraining when the drift detection triggers specific metric alarms. Below is the example of the alarm when it get triggered.
+
+![feature-drift-alarm][feature-drift-alarm]
 
 #### Update system pipeline
 
@@ -401,4 +422,12 @@ Project Link: [https://github.com/dao-duc-tung/sagemaker-mlops](https://github.c
 
 <!-- MARKDOWN LINKS & IMAGES -->
 
-[architecture]: /media/architecture.png
+[architecture]: docs/architecture.png
+[source-stage]: docs/datasource-after.png
+[build-stage]: docs/codebuild-inprogress.png
+[train-stage]: docs/train-in-progress.png
+[dev-deployment-stage]: docs/dev-deploy-ready.png
+[prod-deployment-stage]: docs/deploy-production.png
+[traffic-shifting-progress]: docs/code-deploy.gif
+[feature-drift-alarm]: docs/cloudwatch-alarm.png
+[detailed-sf]: docs/step-functions-detail.png
