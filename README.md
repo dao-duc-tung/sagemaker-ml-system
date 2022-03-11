@@ -212,7 +212,7 @@ The input of this step is the output of the previous step which is the docker im
      - A CodeCommit Repository, a CodeBuild Project, and a CodePipeline
      - A secured typical VPC with 2 public subnets, 2 private subnets, and an Internet Gateway
      - An EFS volume
-     - Some Event Rule to retrain the model, schedule the CodePipeline
+     - Some Event Rules to retrain the model, schedule the CodePipeline
 
 1. Validate the CF templates by running
 
@@ -270,7 +270,7 @@ The system pipeline consists of several stages.
 
    1. **Step 1**: Build templates. This step runs `model/run_pipeline.yml` to do several tasks (see `model/buildspec.yml`).
 
-      - Create `workflow-graph.yml`: this CF stack creates the SF to prepare data, train and evaluate the model. See **Train stage** below.
+      - Create `workflow-graph.yml`: this CF stack creates the SF to prepare data, train, and evaluate the model. See **Train stage** below.
       - Create `workflow-graph.json`: Parameters of the CF stack `workflow-graph.yml`.
       - Create `sagemaker-custom-resource.json`: Parameters of the CF stack `custom_resource/sagemaker-custom-resource.yml`. See **Step 2** below.
       - Create `deploy-model-dev.json`: Parameters of the CF stack `assets/deploy-model-dev.yml`. See **Dev deployment stage** below.
@@ -310,7 +310,7 @@ The system pipeline consists of several stages.
    - An SM model
    - An SM endpoint configuration
    - An SM endpoint
-   - An LD function (LD endpoint). See `container\code\lambda_handler.py`. This LD function supports gradual deployment. This gradual deployment creates some resources like an `CodeDeploy::Application`, an `CodeDeploy::DeploymentGroup`, and an implicit API Gateway endpoint. Read more [here](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/automating-updates-to-serverless-apps.html).
+   - An LD function (LD endpoint). See `container\code\lambda_handler.py`. This LD function supports gradual deployment. This gradual deployment creates some resources like a `CodeDeploy::Application`, a `CodeDeploy::DeploymentGroup`, and a implicit API Gateway endpoint. Read more [here](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/automating-updates-to-serverless-apps.html).
    - An LD function to perform checks pre-shifting traffic to LD endpoint. See `api\pre_traffic_hook.py`. Read more about `hooks` section for an AWS Lambda deployment [here](https://docs.aws.amazon.com/codedeploy/latest/userguide/reference-appspec-file-structure-hooks.html#appspec-hooks-lambda)
    - An LD function to perform checks post-shifting traffic to LD endpoint. See `api\post_traffic_hook.py`
    - An SM monitoring schedule to run on requests' data
