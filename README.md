@@ -7,7 +7,7 @@
     <img src="docs/banner.png" alt="Logo" width="300" height="100">
   </a>
 
-  <h3 align="center">SageMaker MLOps</h3>
+  <h3 align="center">SageMaker ML System</h3>
 </p>
 
 <!-- TABLE OF CONTENTS -->
