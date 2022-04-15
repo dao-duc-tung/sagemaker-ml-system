@@ -1,4 +1,4 @@
-# SageMaker MLOps
+# SageMaker ML System
 
 <!-- PROJECT LOGO -->
 <br />
