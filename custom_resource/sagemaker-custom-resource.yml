@@ -1,16 +1,5 @@
 Description: Template for sagemaker lambda and cloud formation custom resources
 Transform: AWS::Serverless-2016-10-31
-Parameters:
-  SageMakerProjectId:
-    Type: String
-    Description: Service generated Id of the project
-  ProjectPrefix:
-    Type: String
-    Description: |
-      Makes resource privileges for services using this template scoped-limited.
-      Changing the default must be done with care
-    Default: smsd
-
 Resources:
   AddTransformHeaderFunction:
     Type: AWS::Serverless::Function
@@ -42,7 +31,7 @@ Resources:
       Role: !GetAtt SagemakerCustomResourceRole.Arn
       Description: "Query processing job to return drift"
 
-  QueryEvaluationFunction:
+  QueryTrainingFunction:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: mlops-query-evaluation
@@ -50,39 +39,7 @@ Resources:
       Handler: sagemaker_query_evaluation.lambda_handler
       Runtime: python3.7
       Role: !GetAtt SagemakerCustomResourceRole.Arn
-      Description: "Query evaluation job to return results"
-
-  QueryTrainingFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      FunctionName: mlops-query-training
-      CodeUri: .
-      Handler: sagemaker_query_training.lambda_handler
-      Runtime: python3.7
-      Role: !GetAtt SagemakerCustomResourceRole.Arn
-      Description: "Query training job to copy artifacts to EFS"
-
-      MemorySize: 128 # depends on model artifacts size
-      Timeout: 10
-      VpcConfig:
-        SecurityGroupIds:
-          - Fn::ImportValue: !Sub ${ProjectPrefix}-${SageMakerProjectId}-pipeline-task-sg-id
-        SubnetIds:
-          - Fn::ImportValue: !Sub ${ProjectPrefix}-${SageMakerProjectId}-private-1-id
-          - Fn::ImportValue: !Sub ${ProjectPrefix}-${SageMakerProjectId}-private-2-id
-      FileSystemConfigs:
-        - Arn:
-            !Join [
-              "/",
-              [
-                Fn::Sub: "arn:aws:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:access-point",
-                Fn::ImportValue: !Sub "${ProjectPrefix}-${SageMakerProjectId}-efs-access-point-id",
-              ],
-            ]
-          LocalMountPath: "/mnt/assets"
-      Environment:
-        Variables:
-          ASSETS_DIR: "/mnt/assets"
+      Description: "Query training job to return results"
 
   SagemakerCustomResourceRole:
     Type: AWS::IAM::Role
@@ -99,8 +56,6 @@ Resources:
         Version: "2012-10-17"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-        - "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-        - "arn:aws:iam::aws:policy/AmazonElasticFileSystemClientFullAccess"
       Policies:
         - PolicyDocument:
             Statement:

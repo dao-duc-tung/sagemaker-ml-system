@@ -73,162 +73,137 @@ Resources:
     Properties:
       PolicyName: SageMakerSafeDeploymentAdditional
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Action:
-            - "cloudtrail:*"
+              - "cloudtrail:*"
             Resource:
               - "*"
           - Effect: Allow
             Action:
-            - "cloudformation:DescribeStacks"
-            - "cloudformation:DescribeStackEvents"
-            - "cloudformation:DeleteStack"
+              - "cloudformation:DescribeStacks"
+              - "cloudformation:DescribeStackEvents"
+              - "cloudformation:DeleteStack"
             Resource:
               - !Sub "arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ProjectPrefix}-*"
           - Effect: Allow
             Action:
-            - "codecommit:CreateRepository"
-            - "codecommit:GetRepository"
-            - "codecommit:GetBranch"
-            - "codecommit:DeleteRepository"
-            - "codecommit:TagResource"
-            - "codecommit:CreateCommit"
+              - "codecommit:CreateRepository"
+              - "codecommit:GetRepository"
+              - "codecommit:GetBranch"
+              - "codecommit:DeleteRepository"
+              - "codecommit:TagResource"
+              - "codecommit:CreateCommit"
             Resource:
-              - !Sub "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:sagemaker-safe-deployment-ppl*"
+              - !Sub "arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:amazon-sagemaker-safe-deployment-pipeline*"
           - Effect: Allow
             Action:
-            - "codebuild:CreateProject"
-            - "codebuild:DeleteProject"
+              - "codebuild:CreateProject"
+              - "codebuild:DeleteProject"
             Resource:
               - !Sub "arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${ProjectPrefix}-*"
           - Effect: Allow
             Action:
-            - "codepipeline:CreatePipeline"
-            - "codepipeline:DeletePipeline"
-            - "codepipeline:GetPipeline"
-            - "codepipeline:GetPipelineState"
-            - "codepipeline:TagResource"
-            - "codepipeline:StartPipelineExecution"
+              - "codepipeline:CreatePipeline"
+              - "codepipeline:DeletePipeline"
+              - "codepipeline:GetPipeline"
+              - "codepipeline:GetPipelineState"
+              - "codepipeline:TagResource"
+              - "codepipeline:StartPipelineExecution"
             Resource:
               - !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${ProjectPrefix}-*"
           - Effect: Allow
             Action:
-            - "codepipeline:PutApprovalResult"
+              - "codepipeline:PutApprovalResult"
             Resource:
               - !Sub "arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${ProjectPrefix}-*/DeployDev/ApproveDeploy"
           - Effect: Allow
             Action:
-            - "kms:*"
+              - "kms:*"
             Resource:
-            - "*"
+              - "*"
           - Effect: Allow
             Action:
-            - "iam:GetRole"
-            - "iam:PassRole"
-            - "iam:CreateRole"
-            - "iam:DeleteRole"
-            - "iam:GetRolePolicy"
-            - "iam:PutRolePolicy"
-            - "iam:AttachRolePolicy"
-            - "iam:DetachRolePolicy"
-            - "iam:DeleteRolePolicy"
-            - "iam:ListRoleTags"
-            - "iam:TagRole"
+              - "iam:GetRole"
+              - "iam:PassRole"
+              - "iam:CreateRole"
+              - "iam:DeleteRole"
+              - "iam:GetRolePolicy"
+              - "iam:PutRolePolicy"
+              - "iam:AttachRolePolicy"
+              - "iam:DetachRolePolicy"
+              - "iam:DeleteRolePolicy"
+              - "iam:ListRoleTags"
+              - "iam:TagRole"
             Resource:
               - !Sub "arn:aws:iam::${AWS::AccountId}:role/${ProjectPrefix}-*"
           - Effect: Allow
             Action:
-            - "sns:GetTopicAttributes"
-            - "sns:SetTopicAttributes"
-            - "sns:CreateTopic"
-            - "sns:DeleteTopic"
-            - "sns:TagResource"
-            - "sns:UntagResource"
-            - "sns:Subscribe"
-            - "sns:Unsubscribe"
-            Resource:
-              !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${ProjectPrefix}-*"
+              - "sns:GetTopicAttributes"
+              - "sns:SetTopicAttributes"
+              - "sns:CreateTopic"
+              - "sns:DeleteTopic"
+              - "sns:TagResource"
+              - "sns:UntagResource"
+              - "sns:Subscribe"
+              - "sns:Unsubscribe"
+            Resource: !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${ProjectPrefix}-*"
           - Effect: Allow
             Action:
-            - "s3:*"
+              - "s3:*"
             Resource:
               - !Sub "arn:aws:s3:::${ProjectPrefix}-*"
               - !Sub "arn:aws:s3:::${PipelineBucket}*"
           - Effect: Allow
             Action:
-            - "events:PutRule"
-            - "events:DescribeRule"
-            - "events:PutTargets"
-            - "events:RemoveTargets"
-            - "events:DeleteRule"
+              - "events:PutRule"
+              - "events:DescribeRule"
+              - "events:PutTargets"
+              - "events:RemoveTargets"
+              - "events:DeleteRule"
             Resource:
               - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${ProjectPrefix}-*"
               - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/SC-${AWS::AccountId}*"
           - Effect: Allow
             Action:
-            - "servicecatalog:GetProvisionedProductOutputs"
+              - "servicecatalog:GetProvisionedProductOutputs"
             Resource:
               - !Sub "arn:aws:servicecatalog:${AWS::Region}:${AWS::AccountId}:*"
           - Effect: Allow
             Action:
-            - "states:DescribeStateMachine"
-            - "states:ListExecutions"
-            - "states:GetExecutionHistory"
-            - "states:CreateStateMachine"
-            - "states:StartExecution"
-            - "states:DescribeExecution"
-            - "states:DeleteStateMachine"
+              - "states:DescribeStateMachine"
+              - "states:ListExecutions"
+              - "states:GetExecutionHistory"
+              - "states:CreateStateMachine"
+              - "states:StartExecution"
+              - "states:DescribeExecution"
+              - "states:DeleteStateMachine"
             Resource:
               - !Sub "arn:aws:states:${AWS::Region}:${AWS::AccountId}:*:${ProjectPrefix}-*"
           - Effect: Allow
             Action:
-            - "cloudwatch:PutDashboard"
-            - "cloudwatch:GetDashboard"
-            - "cloudwatch:DeleteAlarms"
-            - "cloudwatch:DeleteDashboards"
+              - "cloudwatch:PutDashboard"
+              - "cloudwatch:GetDashboard"
+              - "cloudwatch:DeleteAlarms"
+              - "cloudwatch:DeleteDashboards"
             Resource:
               - !Sub "arn:aws:cloudwatch::${AWS::AccountId}:dashboard/${ProjectPrefix}-*"
           - Effect: Allow
             Action:
-            - "cloudwatch:PutMetricData"
-            - "cloudwatch:GetMetricStatistics"
-            Resource:
-              "*"
+              - "cloudwatch:PutMetricData"
+              - "cloudwatch:GetMetricStatistics"
+            Resource: "*"
             Condition:
               StringEquals:
                 cloudwatch:namespace: "aws/sagemaker/Endpoints/data-metrics"
           - Effect: Allow
             Action:
-            - "lambda:CreateFunction"
-            - "lambda:InvokeFunction"
-            - "lambda:PublishLayerVersion"
+              - "lambda:CreateFunction"
+              - "lambda:InvokeFunction"
+              - "lambda:PublishLayerVersion"
             Resource:
               - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:*:${ProjectPrefix}-*"
-          - Effect: Allow # To create VPC, SG, RouteTable, Route, etc
-            Action:
-            - "ec2:*"
-            Resource:
-              - "*"
-          - Effect: Allow # To create EFS, AccessPoint
-            Action:
-            - "cloudwatch:DescribeAlarmsForMetric"
-            - "cloudwatch:GetMetricData"
-            - "kms:DescribeKey"
-            - "kms:ListAliases"
-            - "elasticfilesystem:*"
-            Resource:
-              - "*"
-          - Effect: Allow # To create EFS, AccessPoint
-            Action:
-            - "iam:CreateServiceLinkedRole"
-            Resource:
-              - "*"
-            Condition:
-              StringLike:
-                "iam:AWSServiceName":
-                  - "elasticfilesystem.amazonaws.com"
       Roles:
         - !Ref SageMakerStudioRoleName
         - AmazonSageMakerServiceCatalogProductsLaunchRole

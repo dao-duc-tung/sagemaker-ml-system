@@ -1,9 +1,12 @@
 import argparse
 import json
 import os
+import sys
+import time
 
 import boto3
 import sagemaker
+import stepfunctions
 from sagemaker.image_uris import retrieve
 from sagemaker.model_monitor.dataset_format import DatasetFormat
 from sagemaker.processing import (
@@ -100,9 +103,8 @@ def create_baseline_step(input_data, execution_input, region, role):
     baseline_step.add_catch(
         steps.states.Catch(
             error_equals=["States.TaskFailed"],
-            next_step=steps.states.Fail(
-                "Baseline failed",
-                cause="SageMakerBaselineJobFailed",
+            next_step=stepfunctions.steps.states.Fail(
+                "Baseline failed", cause="SageMakerBaselineJobFailed"
             ),
         )
     )
@@ -116,7 +118,6 @@ def create_training_step(
     output_data,
     execution_input,
     query_evaluation_function_name,
-    query_training_function_name,
     region,
     role,
 ):
@@ -160,11 +161,10 @@ def create_training_step(
 
     # Add the catch
     training_step.add_catch(
-        steps.states.Catch(
+        stepfunctions.steps.states.Catch(
             error_equals=["States.TaskFailed"],
-            next_step=steps.states.Fail(
-                "Training failed",
-                cause="SageMakerTrainingJobFailed",
+            next_step=stepfunctions.steps.states.Fail(
+                "Training failed", cause="SageMakerTrainingJobFailed"
             ),
         )
     )
@@ -230,9 +230,8 @@ def create_training_step(
     evaluation_step.add_catch(
         steps.states.Catch(
             error_equals=["States.TaskFailed"],
-            next_step=steps.states.Fail(
-                "Evaluation failed",
-                cause="SageMakerEvaluationJobFailed",
+            next_step=stepfunctions.steps.states.Fail(
+                "Evaluation failed", cause="SageMakerEvaluationJobFailed"
             ),
         )
     )
@@ -248,38 +247,28 @@ def create_training_step(
     )
 
     check_accuracy_fail_step = steps.states.Fail(
-        "Model Performance Is Not Acceptable", comment="AUC is smaller than threshold"
+        "Model Performance Is Not Acceptable", comment="F1 is smaller than threshold"
     )
 
-    # Query the training step to store artifacts
-    training_query_step = steps.compute.LambdaStep(
-        "Query Training Results",
-        parameters={
-            "FunctionName": query_training_function_name,
-            "Payload": {"TrainingJobName.$": "$.TrainingJobName"},
-        },
-        result_path="$.QueryTrainingResults",
-    )
-    training_query_step.add_retry(
-        steps.states.Retry(
-            error_equals=["States.ALL"],
-            interval_seconds=3,
-            max_attempts=3,
-            backoff_rate=2.0,
-        )
+    check_accuracy_succeed_step = steps.states.Succeed(
+        "Model Performance Is Acceptable"
     )
 
     # TODO: Update query method to query validation error using better result path
     threshold_rule = steps.choice_rule.ChoiceRule.NumericGreaterThan(
         variable=evaluation_query_step.output()["QueryEvaluationResults"]["Payload"][
             "results"
-        ]["ProcessingMetrics"]["binary_classification_metrics"]["auc"]["value"],
-        value=0.7,
+        ]["ProcessingMetrics"]["multiclass_classification_metrics"]["weighted_f1"][
+            "value"
+        ],
+        value=0.6,
     )
 
-    check_accuracy_step = steps.states.Choice("AUC > 0.7")
+    check_accuracy_step = steps.states.Choice("F1 > 0.6")
 
-    check_accuracy_step.add_choice(rule=threshold_rule, next_step=training_query_step)
+    check_accuracy_step.add_choice(
+        rule=threshold_rule, next_step=check_accuracy_succeed_step
+    )
     check_accuracy_step.default_choice(next_step=check_accuracy_fail_step)
 
     # Return the chain of these steps
@@ -301,29 +290,16 @@ def create_graph(create_experiment_step, baseline_step, training_step):
 
     # Do we need specific failure for the jobs for group?
     sagemaker_jobs.add_catch(
-        steps.states.Catch(
+        stepfunctions.steps.states.Catch(
             error_equals=["States.TaskFailed"],
-            next_step=steps.states.Fail(
-                "SageMaker Jobs failed",
-                cause="SageMakerJobsFailed",
+            next_step=stepfunctions.steps.states.Fail(
+                "SageMaker Jobs failed", cause="SageMakerJobsFailed"
             ),
         )
     )
 
     # Return the workflow graph
     return steps.states.Chain([create_experiment_step, sagemaker_jobs])
-
-
-def get_custom_resource_config(sagemaker_project_id, project_prefix):
-    return {
-        "Parameters": {
-            "SageMakerProjectId": sagemaker_project_id,
-            "ProjectPrefix": project_prefix,
-        },
-        "Tags": {
-            "SageMakerProjectId": sagemaker_project_id,
-        },
-    }
 
 
 def get_dev_config(
@@ -354,16 +330,11 @@ def get_prd_config(
     kms_key_id,
     notification_arn,
     sagemaker_project_id,
-    project_prefix,
-    image_lambda_uri,
 ):
     dev_config = get_dev_config(
         model_name, job_id, role, image_uri, kms_key_id, sagemaker_project_id
     )
     prod_params = {
-        "SageMakerProjectId": sagemaker_project_id,
-        "ProjectPrefix": project_prefix,
-        "ImageLambdaUri": image_lambda_uri,
         "ModelVariant": "prd",
         "ScheduleMetricName": "feature_baseline_drift_total_amount",
         "ScheduleMetricThreshold": str("0.20"),
@@ -412,17 +383,16 @@ def main(
     sagemaker_bucket,
     data_dir,
     output_dir,
+    ecr_dir,
     kms_key_id,
     workflow_role_arn,
     notification_arn,
     sagemaker_project_id,
-    project_prefix,
     tags,
 ):
     # Define the function names
     create_experiment_function_name = "mlops-create-experiment"
     query_evaluation_function_name = "mlops-query-evaluation"
-    query_training_function_name = "mlops-query-training"
 
     # Get the region
     region = boto3.Session().region_name
@@ -430,11 +400,8 @@ def main(
 
     # Load the image uri and input data config
     with open(os.path.join(data_dir, "imageDetail.json"), "r") as f:
-        image_detail = json.load(f)
-        image_uri = image_detail["ImageUri"]
-        image_lambda_uri = image_detail["ImageLambdaUri"]
-    print("image_uri: {}".format(image_uri))
-    print("image_lambda_uri: {}".format(image_lambda_uri))
+        image_uri = json.load(f)["ImageUri"]
+    print("image uri: {}".format(image_uri))
 
     with open(os.path.join(data_dir, "inputData.json"), "r") as f:
         input_data = json.load(f)
@@ -496,7 +463,6 @@ def main(
         output_data,
         execution_input,
         query_evaluation_function_name,
-        query_training_function_name,
         region,
         sagemaker_role,
     )
@@ -535,9 +501,6 @@ def main(
         json.dump(workflow_inputs, f)
 
     # Write the dev & prod params for CFN
-    with open(os.path.join(output_dir, "sagemaker-custom-resource.json"), "w") as f:
-        config = get_custom_resource_config(sagemaker_project_id, project_prefix)
-        json.dump(config, f)
     with open(os.path.join(output_dir, "deploy-model-dev.json"), "w") as f:
         config = get_dev_config(
             model_name, job_id, deploy_role, image_uri, kms_key_id, sagemaker_project_id
@@ -552,8 +515,6 @@ def main(
             kms_key_id,
             notification_arn,
             sagemaker_project_id,
-            project_prefix,
-            image_lambda_uri,
         )
         json.dump(config, f)
 
@@ -577,6 +538,7 @@ if __name__ == "__main__":
     parser.add_argument("--codebuild-id", required=True)
     parser.add_argument("--data-dir", required=True)
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--ecr-dir", required=False)
     parser.add_argument("--pipeline-name", required=True)
     parser.add_argument("--model-name", required=True)
     parser.add_argument("--deploy-role", required=True)
@@ -587,7 +549,6 @@ if __name__ == "__main__":
     parser.add_argument("--workflow-role-arn", required=True)
     parser.add_argument("--notification-arn", required=True)
     parser.add_argument("--sagemaker-project-id", required=True)
-    parser.add_argument("--project-prefix", required=True)
     args = vars(parser.parse_args())
     print("args: {}".format(args))
     main(**args)

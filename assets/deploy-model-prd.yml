@@ -1,21 +1,9 @@
 Transform: AWS::Serverless-2016-10-31
 Description: Deploy the production Amazon SageMaker Endpoint with Autoscaling, Model Monitoring Schedule and API Gateway Lambda.
 Parameters:
-  SageMakerProjectId:
-    Type: String
-    Description: Service generated Id of the project
-  ProjectPrefix:
-    Type: String
-    Description: |
-      Makes resource privileges for services using this template scoped-limited.
-      Changing the default must be done with care
-    Default: smsd
   ImageRepoUri:
     Type: String
     Description: Uri of the docker (ECR) model image
-  ImageLambdaUri:
-    Type: String
-    Description: Uri of the docker (ECR) lambda image
   ModelName:
     Type: String
     Description: Name of the model
@@ -41,7 +29,7 @@ Parameters:
     Description: The arn for notification topic
     Type: String
   FormattedJobId:
-    Description: The job id without hyphen
+    Description: The job id without hyphen to determine whether a new Lambda version should be published
     Type: String
 
 Mappings:
@@ -137,13 +125,9 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub ${ModelName}-api
-      PackageType: Image
-      ImageUri: !Ref ImageLambdaUri
-      ### Only for PackageType = Zip
-      # CodeUri: ../api
-      # Runtime: python3.7
-      # Handler: app.lambda_handler
-      ###
+      CodeUri: ../api
+      Handler: app.lambda_handler
+      Runtime: python3.7
       Role: !GetAtt ApiFunctionRole.Arn
       KmsKeyArn: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${KmsKeyId}
       AutoPublishAlias: "live"
@@ -151,28 +135,9 @@ Resources:
       # we need to update this everytime the CodePipeline is executed
       AutoPublishCodeSha256: !Ref FormattedJobId
 
-      MemorySize: 512
-      Timeout: 30
-      VpcConfig:
-        SecurityGroupIds:
-          - Fn::ImportValue: !Sub ${ProjectPrefix}-${SageMakerProjectId}-pipeline-task-sg-id
-        SubnetIds:
-          - Fn::ImportValue: !Sub ${ProjectPrefix}-${SageMakerProjectId}-private-1-id
-          - Fn::ImportValue: !Sub ${ProjectPrefix}-${SageMakerProjectId}-private-2-id
-      FileSystemConfigs:
-        - Arn:
-            !Join [
-              "/",
-              [
-                Fn::Sub: "arn:aws:elasticfilesystem:${AWS::Region}:${AWS::AccountId}:access-point",
-                Fn::ImportValue: !Sub "${ProjectPrefix}-${SageMakerProjectId}-efs-access-point-id",
-              ],
-            ]
-          LocalMountPath: "/mnt/assets"
       Environment:
         Variables:
           ENDPOINT_NAME: !GetAtt Endpoint.EndpointName
-          ASSETS_DIR: "/mnt/assets"
 
       # Enable gradual Lambda deployment
       # This triggers AWS SAM to create an CodeDeploy::Application, an CodeDeploy::DeploymentGroup, and an IAM::Role
@@ -220,8 +185,6 @@ Resources:
         Version: "2012-10-17"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-        - "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-        - "arn:aws:iam::aws:policy/AmazonElasticFileSystemClientFullAccess"
       Policies:
         - PolicyDocument:
             Statement:
@@ -426,6 +389,9 @@ Resources:
     DependsOn: AutoScaling
 
 Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   DeploymentApplication:
     Description: "Regression deployment application"
     Value: !Ref ServerlessDeploymentApplication

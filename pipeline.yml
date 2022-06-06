@@ -8,7 +8,6 @@ Metadata:
         Parameters:
           - ModelName
           - DatasetBucket
-          - ProjectPrefix
       - Label:
           default: Git Config
         Parameters:
@@ -28,6 +27,8 @@ Metadata:
         default: Model Name
       DatasetBucket:
         default: S3 Bucket for Dataset
+      ImageRepo:
+        default: Image Repo for processing, training
       GitBranch:
         default: Git Branch
       EmailAddress:
@@ -67,6 +68,10 @@ Parameters:
   DatasetBucket:
     Default: s3-bucket
     Description: S3 dataset bucket.
+    Type: String
+  ImageRepo:
+    Default: ecr-repo
+    Description: ECR repo
     Type: String
   GitBranch:
     Default: main
@@ -186,7 +191,7 @@ Resources:
   CodeCommitRepository:
     Type: AWS::CodeCommit::Repository
     Properties:
-      RepositoryName: !Sub "sagemaker-safe-deployment-ppl-${SageMakerProjectName}-${SageMakerProjectId}" # !Sub ${GitHubRepo}
+      RepositoryName: !Sub "amazon-sagemaker-safe-deployment-pipeline-${SageMakerProjectName}-${SageMakerProjectId}" # !Sub ${GitHubRepo}
       RepositoryDescription: !Sub SageMaker safe deployment pipeline for project ${SageMakerProjectName} with id ${SageMakerProjectId}, prefix ${ProjectPrefix} and model name ${ModelName}
       Code:
         S3:
@@ -345,7 +350,6 @@ Resources:
                 RoleArn: !GetAtt DeployRole.Arn
                 Capabilities: CAPABILITY_NAMED_IAM,CAPABILITY_AUTO_EXPAND
                 StackName: !Sub ${ProjectPrefix}-${ModelName}-${SageMakerProjectId}-sagemaker-custom-resource # Use global name to re-use across templates
-                TemplateConfiguration: BuildOutput::sagemaker-custom-resource.json
                 TemplatePath: BuildOutput::packaged-custom-resource.yml
               RunOrder: 2
         - Name: Train
@@ -411,215 +415,6 @@ Resources:
                 TemplateConfiguration: BuildOutput::deploy-model-prd.json
                 TemplatePath: BuildOutput::packaged-model-prd.yml
               RunOrder: 1
-
-  VPC:
-    Type: AWS::EC2::VPC
-    Properties:
-      CidrBlock: 10.0.0.0/16
-      EnableDnsSupport: true
-      EnableDnsHostnames: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-vpc
-
-  InternetGateway:
-    Type: AWS::EC2::InternetGateway
-    DependsOn: VPC
-    Properties:
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-igw
-
-  AttachGateway:
-    Type: AWS::EC2::VPCGatewayAttachment
-    Properties:
-      VpcId: !Ref VPC
-      InternetGatewayId: !Ref InternetGateway
-
-  PublicSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.0.0/24
-      AvailabilityZone: !Sub ${AWS::Region}a
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-public-1
-
-  PublicSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Sub ${AWS::Region}b
-      MapPublicIpOnLaunch: true
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-public-2
-
-  PrivateSubnet1:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Sub ${AWS::Region}a
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-private-1
-
-  PrivateSubnet2:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !Ref VPC
-      CidrBlock: 10.0.3.0/24
-      AvailabilityZone: !Sub ${AWS::Region}b
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-private-2
-
-  NATGateway:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NATGWElasticIP.AllocationId
-      SubnetId: !Ref PublicSubnet1
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-natgw
-
-  NATGWElasticIP:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: VPC
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-natgw
-
-  PublicRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-public-rt
-
-  PublicRoute1: # Public route table has direct routing to IGW:
-    Type: AWS::EC2::Route
-    DependsOn: AttachGateway
-    Properties:
-      RouteTableId: !Ref PublicRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      GatewayId: !Ref InternetGateway
-
-  PrivateRouteTable:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-private-rt
-
-  PrivateRoute1:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: 0.0.0.0/0
-      # Route traffic through the NAT Gateway:
-      NatGatewayId: !Ref NATGateway
-
-  PublicSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet1
-      RouteTableId: !Ref PublicRouteTable
-
-  PublicSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PublicSubnet2
-      RouteTableId: !Ref PublicRouteTable
-
-  PrivateSubnet1RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet1
-      RouteTableId: !Ref PrivateRouteTable
-
-  PrivateSubnet2RouteTableAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      SubnetId: !Ref PrivateSubnet2
-      RouteTableId: !Ref PrivateRouteTable
-
-  PipelineTaskSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: SG default for Sagemaker task
-      GroupName: !Sub ${ProjectPrefix}-${SageMakerProjectId}-pipeline-task-sg
-      VpcId: !Ref VPC
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-pipeline-task-sg
-
-  EfsSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: SG for EFS
-      GroupName: !Sub ${ProjectPrefix}-${SageMakerProjectId}-efs-sg
-      VpcId: !Ref VPC
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 2049
-          ToPort: 2049
-          SourceSecurityGroupId: !Ref PipelineTaskSecurityGroup
-      Tags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-efs-sg
-
-  AssetsEfs:
-    Type: AWS::EFS::FileSystem
-    Properties:
-      BackupPolicy:
-        Status: ENABLED
-      LifecyclePolicies:
-        - TransitionToIA: AFTER_90_DAYS
-      ThroughputMode: bursting
-      Encrypted: true
-      FileSystemTags:
-        - Key: Name
-          Value: !Sub ${ProjectPrefix}-${SageMakerProjectId}-assets-efs
-
-  EfsMountTarget1:
-    Type: AWS::EFS::MountTarget
-    DependsOn: AssetsEfs
-    Properties:
-      FileSystemId: !Ref AssetsEfs
-      SubnetId: !Ref PrivateSubnet1
-      SecurityGroups:
-        - !Ref EfsSecurityGroup
-
-  EfsMountTarget2:
-    Type: AWS::EFS::MountTarget
-    DependsOn: AssetsEfs
-    Properties:
-      FileSystemId: !Ref AssetsEfs
-      SubnetId: !Ref PrivateSubnet2
-      SecurityGroups:
-        - !Ref EfsSecurityGroup
-
-  EfsAccessPoint:
-    Type: AWS::EFS::AccessPoint
-    Properties:
-      FileSystemId: !Ref AssetsEfs
-      PosixUser:
-        Uid: "1000"
-        Gid: "1000"
-      RootDirectory:
-        CreationInfo:
-          OwnerGid: "1000"
-          OwnerUid: "1000"
-          Permissions: "0777"
-        Path: "/assets"
 
   CodeCommitEventRule:
     Type: AWS::Events::Rule
@@ -842,6 +637,7 @@ Resources:
               - s3:GetBucket*
               - s3:GetObject*
               - s3:PutObject
+              - s3:ListBucket
             Resource:
               - !Sub arn:aws:s3:::${DatasetBucket}/*
               - !Sub arn:aws:s3:::${DatasetBucket}
@@ -855,7 +651,6 @@ Resources:
               - s3:CreateBucket
               - s3:ListBucket
             Resource:
-              - !Sub arn:aws:s3:::${DatasetBucket}
               - !Sub arn:aws:s3:::sagemaker-${AWS::Region}-${AWS::AccountId}
           - Sid: AllowKms
             Effect: Allow
@@ -866,6 +661,7 @@ Resources:
               - kms:GenerateDataKey*
               - kms:ReEncrypt*
             Resource:
+              - !Sub arn:aws:s3:::${DatasetBucket}
               - !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/${KMSKey}
           - Sid: AllowLogs
             Effect: Allow
@@ -878,6 +674,20 @@ Resources:
         - !Ref SageMakerRole
         - !Ref PipelineRole
         - !Ref DeployRole
+
+  ECRPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${ProjectPrefix}-ecr-policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: S3Resources
+            Effect: Allow
+            Action: "ecr:*"
+            Resource: "*"
+      Roles:
+        - !Ref SageMakerRole
 
   CloudWatchEventRole:
     Type: AWS::IAM::Role
@@ -928,7 +738,6 @@ Resources:
               - "sts:AssumeRole"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/CloudWatchSyntheticsFullAccess"
-        - Fn::Sub: "arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
       Policies:
         - PolicyName: !Sub ${ProjectPrefix}-sagemaker-policy
           PolicyDocument:
@@ -1018,8 +827,6 @@ Resources:
             Action:
               - "sts:AssumeRole"
       Path: "/"
-      ManagedPolicyArns:
-        - Fn::Sub: "arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
       Policies:
         - PolicyName: !Sub "${ProjectPrefix}-pipeline"
           PolicyDocument:
@@ -1072,8 +879,6 @@ Resources:
       Path: "/"
       ManagedPolicyArns:
         - Fn::Sub: "arn:${AWS::Partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-        - Fn::Sub: "arn:${AWS::Partition}:iam::aws:policy/AmazonVPCReadOnlyAccess" # to read Security Groups
-        - Fn::Sub: "arn:${AWS::Partition}:iam::aws:policy/AmazonElasticFileSystemClientFullAccess" # to read EFS
       Policies:
         - PolicyName: !Sub ${ProjectPrefix}-deploy
           PolicyDocument:
@@ -1190,38 +995,3 @@ Outputs:
     Value: !Ref KMSKey
   NotificationTopic:
     Value: !Ref NotificationTopic
-  VpcId:
-    Description: the ID of the VPC
-    Value: !Ref VPC
-    Export:
-      Name: !Sub ${ProjectPrefix}-${SageMakerProjectId}-vpc-id
-  PublicSubnet1Id:
-    Description: the ID of the subnet
-    Value: !Ref PublicSubnet1
-    Export:
-      Name: !Sub ${ProjectPrefix}-${SageMakerProjectId}-public-1-id
-  PublicSubnet2Id:
-    Description: the ID of the subnet
-    Value: !Ref PublicSubnet2
-    Export:
-      Name: !Sub ${ProjectPrefix}-${SageMakerProjectId}-public-2-id
-  PrivateSubnet1Id:
-    Description: the ID of the subnet
-    Value: !Ref PrivateSubnet1
-    Export:
-      Name: !Sub ${ProjectPrefix}-${SageMakerProjectId}-private-1-id
-  PrivateSubnet2Id:
-    Description: the ID of the subnet
-    Value: !Ref PrivateSubnet2
-    Export:
-      Name: !Sub ${ProjectPrefix}-${SageMakerProjectId}-private-2-id
-  EfsAccessPointId:
-    Description: the ID of the EFS Access point
-    Value: !Ref EfsAccessPoint
-    Export:
-      Name: !Sub ${ProjectPrefix}-${SageMakerProjectId}-efs-access-point-id
-  PipelineTaskSecurityGroupId:
-    Description: the ID of the Pipeline's Task SG
-    Value: !Ref PipelineTaskSecurityGroup
-    Export:
-      Name: !Sub ${ProjectPrefix}-${SageMakerProjectId}-pipeline-task-sg-id

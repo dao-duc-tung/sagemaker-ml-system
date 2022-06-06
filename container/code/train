@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
 import json
-import sys
 from pathlib import Path
+
+import pandas as pd
+from imblearn.combine import SMOTETomek
+from pycaret.classification import create_model, save_model, setup, save_config
 
 from utils import *
 
@@ -13,6 +16,7 @@ class TrainConfig:
 
     IN_PARAM_JSON = ROOT_DIR / "input/config/hyperparameters.json"
     IN_TRAINING_DIR = INPUT_DATA_DIR / "train"
+    IN_TRAIN_CSV = IN_TRAINING_DIR / "train.csv"
 
     OUT_MODEL_DIR = ROOT_DIR / "model"
     OUT_MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -27,12 +31,58 @@ def inspect_input():
     logger.info(f"{TrainConfig.IN_TRAINING_DIR.as_posix()}: {files}")
 
 
-def train(learning_rate=0.03):
+def train(random_seed=17, *args, **kwargs):
     logger.info(f"Start train")
-    params = {
-        "learning_rate": learning_rate,
-    }
-    logger.info(f"Training with params={params}")
+    df = pd.read_csv(TrainConfig.IN_TRAIN_CSV)
+
+    logger.info(f"Pycaret setup")
+    exp_baseline = setup(
+        data=df,
+        train_size=0.9,  # split training and hold-out test set
+        target="target",
+        session_id=17,
+        use_gpu=False,
+        data_split_shuffle=True,
+        data_split_stratify=True,
+        fold_strategy="stratifiedkfold",
+        fold=5,
+        imputation_type="simple",  # there's a small number of missing values
+        numeric_imputation="mean",  # use mean to replace missing values
+        fix_imbalance=True,
+        fix_imbalance_method=SMOTETomek(),  # imblearn's method
+        remove_outliers=False,
+        outliers_threshold=0.05,  # percentage of outliers in distribution's tail
+        normalize=True,
+        normalize_method="zscore",  # z=(x-u)/s
+        transformation=False,
+        transformation_method="yeo-johnson",
+        feature_interaction=False,  # create a*b features
+        feature_ratio=False,  # create a/b features
+        interaction_threshold=0.01,  # threshold feature importance
+        polynomial_features=False,
+        polynomial_degree=2,
+        polynomial_threshold=0.1,
+        trigonometry_features=False,  # create tan(x), sin(x), cos(x)
+        feature_selection=True,  # use tree models to compute feature importance
+        feature_selection_threshold=0.8,
+        remove_multicollinearity=True,  # drop highly correlated features
+        multicollinearity_threshold=0.9,
+        pca=True,  # reduce feature space dimension
+        pca_method="linear",
+        pca_components=0.99,  # % components to keep
+        silent=True,  # no asking enter
+    )
+
+    logger.info(f"Pycaret finalize_model")
+    model1 = create_model("lightgbm")
+
+    logger.info(f"Pycaret save_model")
+    model_path = TrainConfig.OUT_MODEL_DIR / "final-model"
+    save_model(model1, model_path.as_posix())
+
+    logger.info(f"Pycaret save_config")
+    config_path = TrainConfig.OUT_MODEL_DIR / "final-config"
+    save_config(config_path.as_posix())
 
 
 def inspect_output():
@@ -49,9 +99,9 @@ if __name__ == "__main__":
     logger.info(f"params: {params}")
 
     args = {}
-    learning_rate = params.get("learning_rate", None)
-    if learning_rate is not None:
-        args["learning_rate"] = float(learning_rate)
+    random_seed = params.get("random_seed", None)
+    if random_seed is not None:
+        args["random_seed"] = float(random_seed)
 
     inspect_input()
     train(**args)

@@ -42,8 +42,7 @@ phases:
         --kms-key-id=$KMS_KEY_ID \
         --workflow-role-arn=$WORKFLOW_ROLE_ARN \
         --notification-arn=$NOTIFICATION_ARN \
-        --sagemaker-project-id=$SAGEMAKER_PROJECT_ID \
-        --project-prefix=$PREFIX
+        --sagemaker-project-id=$SAGEMAKER_PROJECT_ID
       - echo Set unique commit in api to ensure re-deploy
       - echo $CODEBUILD_RESOLVED_SOURCE_VERSION > api/commit.txt
       - echo $CODEBUILD_BUILD_ID >> api/commit.txt # Add build ID when commit doesn't change

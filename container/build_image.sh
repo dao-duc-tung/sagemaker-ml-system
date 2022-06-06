@@ -16,7 +16,8 @@ fi
 
 if [ "$dockerfile" == "" ]
 then
-    dockerfile=Dockerfile
+    echo "Usage: $0 <image-name> <dockerfile>"
+    exit 1
 fi
 
 # Build the docker image locally with the image name and then push it to ECR

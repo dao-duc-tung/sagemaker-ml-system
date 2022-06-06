@@ -1,8 +1,11 @@
 import io
+import pickle
 from pathlib import Path
 
 import flask
+import numpy as np
 import pandas as pd
+from pycaret.regression import load_model, predict_model, load_config
 
 from utils import *
 
@@ -10,15 +13,14 @@ from utils import *
 class ServeConfig:
     OPT_ML_DIR = Path("/opt/ml")
     MODEL_DIR = OPT_ML_DIR / "model"
-    MODELS_DIR = MODEL_DIR / "models"
-    SCALERS_DIR = MODEL_DIR / "scalers"
 
     ASSETS_PATH = Path("./assets")
     ASSETS_PATH.mkdir(parents=True, exist_ok=True)
-    AUDIO_PATH = ASSETS_PATH / "audio"
-    AUDIO_PATH.mkdir(parents=True, exist_ok=True)
-    META_PATH = ASSETS_PATH / "metadata"
-    META_PATH.mkdir(parents=True, exist_ok=True)
+
+
+logger.info(f"Pycaret load_config")
+config_path = ServeConfig.MODEL_DIR / "final-config"
+load_config(config_path.as_posix())
 
 
 class ScoringService(object):
@@ -32,20 +34,23 @@ class ScoringService(object):
     @classmethod
     def get_model(cls):
         """Get the model object for this instance, loading it if it's not already loaded."""
-        cls.model = None
+        if cls.model == None:
+            logger.info(f"Pycaret load_model")
+            model_path = ServeConfig.MODEL_DIR / "final-model"
+            saved_model = load_model(model_path.as_posix())
+            cls.model = saved_model
         return cls.model
 
     @classmethod
-    def predict(cls, input: pd.DataFrame):
+    def predict(cls, input_df: pd.DataFrame):
         """For the input, do the predictions and return them.
 
         Args:
             input (a pandas dataframe): The data on which to do the predictions. There will be
                 one prediction per row in the dataframe"""
         model = cls.get_model()
-        input_features = input.values
-        # model.predict(input_features)
-        output = None
+        pred_df = predict_model(model, data=input_df)
+        output = pred_df["Label"]
         return output
 
 
@@ -57,6 +62,7 @@ def ping():
     """Determine if the container is working and healthy. In this sample container, we declare
     it healthy if we can load the model successfully."""
     health = ScoringService.get_model() is not None
+
     status = 200 if health else 404
     return flask.Response(response="\n", status=status, mimetype="application/json")
 

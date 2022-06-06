@@ -1,7 +1,11 @@
 import json
-import sys
-import tarfile
 from pathlib import Path
+import tarfile
+import sys
+
+import pandas as pd
+from pycaret.regression import load_model, predict_model, load_config
+from sklearn.metrics import accuracy_score, f1_score
 
 
 class EvalConfig:
@@ -11,6 +15,7 @@ class EvalConfig:
     IN_MODEL_TAR = IN_MODEL_DIR / "model.tar.gz"
 
     IN_TEST_DIR = ROOT_DIR / "test"
+    IN_TEST_CSV = IN_TEST_DIR / "test.csv"
 
     OUT_EVAL_DIR = ROOT_DIR / "evaluation"
     OUT_EVAL_DIR.mkdir(parents=True, exist_ok=True)
@@ -28,10 +33,30 @@ def inspect_input():
 
 def evaluate():
     logger.info(f"Start evaluate")
+    test_df = pd.read_csv(EvalConfig.IN_TEST_CSV)
+
+    logger.info(f"Pycaret load_config")
+    config_path = EvalConfig.IN_MODEL_DIR / "final-config"
+    load_config(config_path.as_posix())
+
+    logger.info(f"Pycaret load_model")
+    model_path = EvalConfig.IN_MODEL_DIR / "final-model"
+    saved_model = load_model(model_path.as_posix())
+
+    logger.info(f"Pycaret predict_model")
+    pred_df = predict_model(saved_model, data=test_df)
+
+    logger.info(f"Compute f1, accuracy")
+    y_test = pred_df["target"]
+    y_pred = pred_df["Label"]
+    f1 = f1_score(y_test, y_pred, average="macro")
+    acc = accuracy_score(y_test, y_pred)
+
+    # MUST follow Sagemaker convention
     report_dict = {
-        "binary_classification_metrics": {
-            "accuracy": {"value": 1.0, "standard_deviation": "NaN"},
-            "auc": {"value": 1.0, "standard_deviation": "NaN"},
+        "multiclass_classification_metrics": {
+            "accuracy": {"value": acc, "standard_deviation": "NaN"},
+            "weighted_f1": {"value": f1, "standard_deviation": "NaN"},
         }
     }
     logger.info(f"report_dict: {report_dict}")

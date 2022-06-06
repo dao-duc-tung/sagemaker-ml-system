@@ -1,9 +1,3 @@
-"""
-THIS IS THE ORIGINAL VERSION OF MAIN LAMBDA HANDLER PROVIDED BY AMAZON.
-THIS PIPELINE USES THE CUSTOMIZED IMAGE TO DEPLOY LAMBDA.
-PLEASE CHECK container/code/lambda_handler.py
-"""
-
 import json
 import logging
 import os
@@ -56,8 +50,6 @@ def lambda_handler(event, context):
             "body": predictions,
         }
     except ClientError as e:
-        logger.error(
-            "Unexpected sagemaker error: {}".format(e.response["Error"]["Message"])
-        )
+        logger.error("Unexpected sagemaker error: {}".format(e.response["Error"]["Message"]))
         logger.error(e)
         return {"statusCode": 500, "message": "Unexpected sagemaker error"}

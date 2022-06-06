@@ -5,7 +5,7 @@ Parameters:
     Description: |
       Makes resource privileges for services using this template scoped-limited.
       Changing the default must be done with care
-    Default: mlops
+    Default: PROJECT_PREFIX
   ModelName:
     Type: String
     Description: Name of the model

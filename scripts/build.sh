@@ -24,6 +24,12 @@ mkdir build
 rsync -av --progress . build \
     --exclude build \
     --exclude "*.git*" \
+    --exclude "*mlruns*" \
+    --exclude "*ml_model*" \
+    --exclude "*problem*" \
+    --exclude "*tmp*" \
+    --exclude "*data*" \
+    --exclude "*nbs*" \
     --exclude .pre-commit-config.yaml
 cd build
 # binding resources of pipeline.yml and studio.yml together with common PREFIX

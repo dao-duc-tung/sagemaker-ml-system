@@ -1,23 +1,23 @@
-# Build an image that can do training and inference in SageMaker
-
-FROM ubuntu:18.04
+ARG DEBIAN_FRONTEND=noninteractive
+FROM python:3.8-slim
 
 MAINTAINER Tung Dao <tungdao17@gmail.com>
 
 RUN apt-get update
-RUN apt-get install -y python3.8 python3.8-dev python3-pip python3.8-venv python3-setuptools
-RUN python3.8 -m pip install pip --upgrade
 
 RUN apt-get install -y --no-install-recommends \
-         wget \
-         nginx \
-         ca-certificates \
+    wget \
+    nginx \
+    ca-certificates \
+    apt-utils \
     && rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y apt-utils 2>&1
+RUN apt-get update
+RUN apt-get -y install curl
+RUN apt-get -y install libgomp1
 
-RUN ln -s /usr/bin/python3.8 /usr/bin/python
-RUN ln -s /usr/bin/pip3.8 /usr/bin/pip
+COPY code/requirements.txt /opt/program/requirements.txt
+RUN pip install -r /opt/program/requirements.txt
 
 # Set some environment variables. PYTHONUNBUFFERED keeps Python from buffering our standard
 # output stream, which means that logs can be delivered to the user quickly. PYTHONDONTWRITEBYTECODE
@@ -31,8 +31,6 @@ ENV PATH="/opt/program:${PATH}"
 # Set up the program in the image
 COPY code /opt/program
 WORKDIR /opt/program
-
-RUN pip install -r requirements.txt
 
 RUN chmod +x /opt/program/train
 RUN chmod +x /opt/program/serve
